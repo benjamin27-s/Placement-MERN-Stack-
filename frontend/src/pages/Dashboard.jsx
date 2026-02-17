@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useAuth } from "../context/AuthContext.jsx";
 import Navbar from "../components/Navbar.jsx";
 import HireFreelancerPanel from "../components/HireFreelancerPanel.jsx";
 import ProfileSetupWizard from "../components/ProfileSetupWizard.jsx";
@@ -6,10 +7,9 @@ import BrowseJobsPanel from "../components/BrowseJobsPanel.jsx";
 import ProfileMenu from "../components/ProfileMenu.jsx";
 import ProfilePanel from "../components/ProfilePanel.jsx";
 import SettingsPanel from "../components/SettingsPanel.jsx";
-import { clearProfile, getProfile, saveProfile } from "../utils/profileStorage.js";
 
 export default function Dashboard() {
-  const [profile, setProfile] = useState(() => getProfile());
+  const { user, updateProfile, logout } = useAuth();
   const [activePanel, setActivePanel] = useState(null); // "profile" | "settings" | null
 
   const initials = useMemo(() => {
@@ -23,41 +23,63 @@ export default function Dashboard() {
         .join("")
         .slice(0, maxLen);
 
-    const freelancerInitials = fromWords(profile?.freelancer?.fullName, 2);
+    const freelancerInitials = fromWords(user?.freelancer?.fullName, 2);
     if (freelancerInitials) return freelancerInitials;
 
-    const companyInitials = fromWords(profile?.hirer?.companyName, 2);
+    const companyInitials = fromWords(user?.hirer?.companyName, 2);
     if (companyInitials) return companyInitials;
 
-    const username = String(profile?.account?.username || "").trim();
+    const username = String(user?.username || "").trim();
     if (username) return username.slice(0, 2).toUpperCase();
 
-    const email = String(profile?.account?.email || "").trim();
+    const email = String(user?.email || "").trim();
     if (email) return email[0]?.toUpperCase() ?? "U";
 
     return "U";
-  }, [profile]);
+  }, [user]);
 
   const onMenuSelect = (next) => {
+    if (next === "logout") {
+      logout();
+      return;
+    }
     setActivePanel((prev) => (prev === next ? null : next));
   };
 
-  const onResetProfile = () => {
-    clearProfile();
-    setActivePanel(null);
-    setProfile(getProfile());
-  };
+  // Build a profile-like object for components that still expect the old format
+  const profile = useMemo(() => {
+    if (!user) return { completed: false };
+    return {
+      completed: user.completed,
+      type: user.type,
+      createdAt: user.createdAt,
+      account: {
+        username: user.username,
+        email: user.email,
+      },
+      hirer: user.hirer,
+      freelancer: user.freelancer,
+    };
+  }, [user]);
 
-  if (!profile?.completed) {
+  if (!user?.completed) {
     return (
       <div className="app">
         <Navbar right={null} />
         <main>
           <ProfileSetupWizard
-            initialAccount={profile?.account}
-            onComplete={(nextProfile) => {
-              saveProfile(nextProfile);
-              setProfile(nextProfile);
+            initialAccount={{ username: user?.username, email: user?.email }}
+            onComplete={async (nextProfile) => {
+              try {
+                await updateProfile({
+                  type: nextProfile.type,
+                  hirer: nextProfile.hirer,
+                  freelancer: nextProfile.freelancer,
+                });
+              } catch (err) {
+                console.error("Profile update failed:", err);
+                alert("Failed to save profile. Please try again.");
+              }
             }}
           />
         </main>
@@ -78,12 +100,12 @@ export default function Dashboard() {
         ) : null}
         {activePanel === "settings" ? (
           <SettingsPanel
-            onReset={onResetProfile}
+            onLogout={logout}
             onClose={() => setActivePanel(null)}
           />
         ) : null}
 
-        {profile?.type === "hirer" ? (
+        {user?.type === "hirer" ? (
           <HireFreelancerPanel initialWorkId="fullstack" />
         ) : (
           <BrowseJobsPanel />

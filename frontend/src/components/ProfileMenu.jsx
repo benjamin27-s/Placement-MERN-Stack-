@@ -63,9 +63,17 @@ export default function ProfileMenu({ initials = "U", onSelect }) {
           >
             Settings
           </button>
+          <div className="profileMenu__divider" />
+          <button
+            className="profileMenu__item profileMenu__item--danger"
+            type="button"
+            role="menuitem"
+            onClick={() => handleSelect("logout")}
+          >
+            Logout
+          </button>
         </div>
       ) : null}
     </div>
   );
 }
-

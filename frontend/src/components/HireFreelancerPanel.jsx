@@ -230,9 +230,36 @@ export default function HireFreelancerPanel({ onClose, initialWorkId }) {
     [selectedWorkId]
   );
 
-  const handlePick = (workId) => {
+  const handlePick = async (workId) => {
     const workLabel = workOptions.find((o) => o.id === workId)?.label ?? "IT";
     setSelectedWorkId(workId);
+
+    // Try fetching real freelancers from API
+    try {
+      const res = await fetch(`/api/jobs/freelancers?limit=10`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.freelancers && data.freelancers.length > 0) {
+          const mapped = data.freelancers.map((u) => ({
+            id: u._id || u.id,
+            name: u.freelancer?.fullName || u.username,
+            country: u.freelancer?.country || "-",
+            title: u.freelancer?.professionalTitle || "-",
+            years: Number(u.freelancer?.yearsExp) || 0,
+            rate: 0,
+            rating: 5.0,
+            projects: 0,
+            availability: "Available",
+            skills: String(u.freelancer?.skills || "").split(",").map((s) => s.trim()).filter(Boolean),
+            bio: u.freelancer?.bio || "",
+          }));
+          setFreelancers(mapped);
+          return;
+        }
+      }
+    } catch {
+      // API not available, use mock data
+    }
     setFreelancers(buildFreelancers(workId, workLabel, 10));
   };
 

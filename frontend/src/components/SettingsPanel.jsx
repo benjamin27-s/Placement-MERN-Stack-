@@ -1,11 +1,12 @@
-export default function SettingsPanel({ onReset, onClose }) {
-  const reset = () => {
-    if (!onReset) return;
-    const ok = window.confirm(
-      "Reset profile?\n\nThis will clear your saved profile data in this browser and return you to the setup wizard."
-    );
-    if (!ok) return;
-    onReset();
+import { useNavigate } from "react-router-dom";
+
+export default function SettingsPanel({ onLogout, onClose }) {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (!onLogout) return;
+    onLogout();
+    navigate("/");
   };
 
   return (
@@ -19,16 +20,15 @@ export default function SettingsPanel({ onReset, onClose }) {
         </header>
 
         <p className="dashboardPanel__hint">
-          Profile data is stored locally for now (backend not connected yet).
+          Manage your account settings and preferences.
         </p>
 
         <div className="dashboardPanel__actions">
-          <button className="dashboardPanel__danger" type="button" onClick={reset}>
-            Reset profile
+          <button className="dashboardPanel__danger" type="button" onClick={handleLogout}>
+            Logout
           </button>
         </div>
       </div>
     </section>
   );
 }
-

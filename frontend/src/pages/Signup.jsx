@@ -1,41 +1,41 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 import Navbar from "../components/Navbar.jsx";
-import { saveProfile } from "../utils/profileStorage.js";
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { signup, error, clearError } = useAuth();
   const [form, setForm] = useState({ username: "", email: "", password: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [localError, setLocalError] = useState("");
 
-  const update = (key) => (e) =>
+  const update = (key) => (e) => {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
+    setLocalError("");
+    clearError();
+  };
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    saveProfile({
-      completed: false,
-      type: null,
-      createdAt: new Date().toISOString(),
-      account: {
-        username: form.username.trim(),
-        email: form.email.trim(),
-      },
-    });
-    navigate("/dashboard");
+    if (submitting) return;
+    if (form.password.length < 6) {
+      setLocalError("Password must be at least 6 characters");
+      return;
+    }
+    setSubmitting(true);
+    setLocalError("");
+    try {
+      await signup(form.username, form.email, form.password);
+      navigate("/dashboard");
+    } catch (err) {
+      setLocalError(err.message || "Signup failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const onGoogle = () => {
-    saveProfile({
-      completed: false,
-      type: null,
-      createdAt: new Date().toISOString(),
-      account: {
-        username: form.username.trim(),
-        email: form.email.trim(),
-      },
-    });
-    navigate("/dashboard");
-  };
+  const displayError = localError || error;
 
   return (
     <div className="app">
@@ -51,13 +51,11 @@ export default function Signup() {
         <section className="auth__card" aria-label="Sign up">
           <h1 className="auth__title">SignUp</h1>
 
-          <button className="auth__google" type="button" onClick={onGoogle}>
-            Sign up with Google
-          </button>
-
-          <div className="auth__divider" aria-hidden="true">
-            <span>or</span>
-          </div>
+          {displayError ? (
+            <div className="auth__error" role="alert">
+              {displayError}
+            </div>
+          ) : null}
 
           <form className="auth__form" onSubmit={onSubmit}>
             <label className="auth__field">
@@ -92,11 +90,12 @@ export default function Signup() {
                 onChange={update("password")}
                 autoComplete="new-password"
                 required
+                minLength={6}
               />
             </label>
 
-            <button className="auth__submit" type="submit">
-              Create account
+            <button className="auth__submit" type="submit" disabled={submitting}>
+              {submitting ? "Creating account…" : "Create account"}
             </button>
           </form>
 

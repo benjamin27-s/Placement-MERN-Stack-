@@ -263,7 +263,7 @@ const buildJobs = (workId, workLabel, count = 10) => {
       timeline,
       skills,
       roles,
-    description,
+      description,
       teamSize: String(randomInt(1, 25)),
     };
   });
@@ -282,9 +282,23 @@ export default function BrowseJobsPanel() {
     [selectedWorkId]
   );
 
-  const handlePick = (workId) => {
+  const handlePick = async (workId) => {
     const workLabel = workOptions.find((o) => o.id === workId)?.label ?? "IT";
     setSelectedWorkId(workId);
+
+    // Try fetching real jobs from API
+    try {
+      const res = await fetch(`/api/jobs?category=${workId}&limit=10`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.jobs && data.jobs.length > 0) {
+          setJobs(data.jobs.map((j) => ({ ...j, id: j._id || j.id })));
+          return;
+        }
+      }
+    } catch {
+      // API not available, use mock data
+    }
     setJobs(buildJobs(workId, workLabel, 10));
   };
 
